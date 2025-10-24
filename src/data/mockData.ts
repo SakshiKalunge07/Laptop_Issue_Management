@@ -1,0 +1,110 @@
+import { Issue, Worker, User } from '../types/issue';
+
+export const mockUsers: User[] = [
+  {
+    id: '1',
+    username: 'admin',
+    password: 'admin123',
+    role: 'manager',
+    name: 'Admin Manager',
+  },
+  {
+    id: '2',
+    username: 'mike',
+    password: 'mike123',
+    role: 'worker',
+    name: 'Mike Johnson',
+  },
+  {
+    id: '3',
+    username: 'sarah',
+    password: 'sarah123',
+    role: 'worker',
+    name: 'Sarah Davis',
+  },
+];
+
+export const mockIssues: Issue[] = [
+  {
+    id: '1',
+    title: 'Screen flickering issue',
+    description: 'Laptop screen flickers when running graphics-intensive applications',
+    brand: 'HP',
+    status: 'Pending',
+    reportedBy: 'John Doe',
+    createdAt: '2025-10-01',
+  },
+  {
+    id: '2',
+    title: 'Battery draining quickly',
+    description: 'Battery life reduced to 2 hours from original 8 hours',
+    brand: 'Dell',
+    status: 'Resolved',
+    reportedBy: 'Jane Smith',
+    assignedTo: 'Mike Johnson',
+    createdAt: '2025-09-28',
+  },
+  {
+    id: '3',
+    title: 'Keyboard keys not working',
+    description: 'Several keys (A, S, D) not responding',
+    brand: 'Asus',
+    status: 'Pending',
+    reportedBy: 'Bob Wilson',
+    createdAt: '2025-10-02',
+  },
+  {
+    id: '4',
+    title: 'Overheating problem',
+    description: 'Laptop gets extremely hot during normal usage',
+    brand: 'HP',
+    status: 'Resolved',
+    reportedBy: 'Alice Brown',
+    assignedTo: 'Sarah Davis',
+    createdAt: '2025-09-25',
+  },
+  {
+    id: '5',
+    title: 'WiFi connectivity issues',
+    description: 'Cannot connect to WiFi networks consistently',
+    brand: 'Dell',
+    status: 'Pending',
+    reportedBy: 'Charlie Green',
+    assignedTo: 'Mike Johnson',
+    createdAt: '2025-10-03',
+  },
+  {
+    id: '6',
+    title: 'Touchpad not responsive',
+    description: 'Touchpad freezes randomly',
+    brand: 'Asus',
+    status: 'Pending',
+    reportedBy: 'David Lee',
+    createdAt: '2025-10-04',
+  },
+  {
+    id: '7',
+    title: 'No sound from speakers',
+    description: 'Audio output not working through built-in speakers',
+    brand: 'HP',
+    status: 'Pending',
+    reportedBy: 'Emma White',
+    createdAt: '2025-10-05',
+  },
+  {
+    id: '8',
+    title: 'Blue screen errors',
+    description: 'Random BSOD errors occurring daily',
+    brand: 'Dell',
+    status: 'Pending',
+    reportedBy: 'Frank Miller',
+    createdAt: '2025-10-04',
+  },
+];
+
+export const mockWorkers: Worker[] = [
+  { id: '1', name: 'Mike Johnson', assignedIssues: 2 },
+  { id: '2', name: 'Sarah Davis', assignedIssues: 1 },
+  { id: '3', name: 'Tom Anderson', assignedIssues: 0 },
+  { id: '4', name: 'Lisa Martinez', assignedIssues: 0 },
+];
