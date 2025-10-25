@@ -10,15 +10,16 @@ import { LogIn } from 'lucide-react';
 
 interface LoginPageProps {
   onNavigate: (page: Page) => void;
-  onLogin: (username: string, password: string) => User | null;
+  onLogin: (username: string, password: string) => Promise<User | null>;
 }
 
 export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -27,13 +28,18 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
       return;
     }
 
-    const user = onLogin(username, password);
-    if (!user) {
-      setError('Invalid username or password');
-      return;
+    setLoading(true);
+    try {
+      const user = await onLogin(username, password);
+      if (!user) {
+        setError('Invalid username or password');
+      }
+    } catch (err) {
+      setError('Login failed. Please check your connection and try again.');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
-
-    // Navigation will be handled by App.tsx after successful login
   };
 
   return (
@@ -63,6 +69,8 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={loading}
+                autoComplete="username"
               />
             </div>
 
@@ -75,11 +83,13 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
+                autoComplete="current-password"
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
 
             <div className="text-center pt-4 border-t">
@@ -89,14 +99,21 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                 variant="outline"
                 className="w-full"
                 onClick={() => onNavigate('register')}
+                disabled={loading}
               >
                 Register New Account
               </Button>
             </div>
 
             <div className="text-center pt-2">
-              <p className="text-muted-foreground">
-                Demo credentials: admin/admin123 (Manager) | mike/mike123 (Worker)
+              <p className="text-xs text-muted-foreground">
+                Demo credentials:
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong>Manager:</strong> admin / admin123
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong>Worker:</strong> mike / mike123
               </p>
             </div>
           </form>

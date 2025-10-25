@@ -10,7 +10,7 @@ import { Brand } from '../../types/issue';
 
 interface AddIssuePageProps {
   onNavigate: (page: Page) => void;
-  onAddIssue: (issue: { title: string; description: string; brand: Brand; reportedBy: string }) => void;
+  onAddIssue: (issue: { title: string; description: string; brand: Brand; reportedBy: string }) => Promise<void>;
 }
 
 export function AddIssuePage({ onNavigate, onAddIssue }: AddIssuePageProps) {
@@ -18,11 +18,33 @@ export function AddIssuePage({ onNavigate, onAddIssue }: AddIssuePageProps) {
   const [description, setDescription] = useState('');
   const [brand, setBrand] = useState<Brand>('HP');
   const [reportedBy, setReportedBy] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAddIssue({ title, description, brand, reportedBy });
-    onNavigate('issue-list');
+    setError('');
+    
+    if (!title.trim() || !description.trim() || !reportedBy.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      await onAddIssue({ 
+        title: title.trim(), 
+        description: description.trim(), 
+        brand, 
+        reportedBy: reportedBy.trim() 
+      });
+      // Navigation handled by parent
+    } catch (err) {
+      console.error('Error submitting issue:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add issue. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -39,19 +61,26 @@ export function AddIssuePage({ onNavigate, onAddIssue }: AddIssuePageProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="title">Issue Title</Label>
+              <Label htmlFor="title">Issue Title *</Label>
               <Input
                 id="title"
                 placeholder="Brief description of the issue"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                disabled={submitting}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description *</Label>
               <Textarea
                 id="description"
                 placeholder="Detailed description of the problem"
@@ -59,12 +88,13 @@ export function AddIssuePage({ onNavigate, onAddIssue }: AddIssuePageProps) {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 required
+                disabled={submitting}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="brand">Laptop Brand</Label>
-              <Select value={brand} onValueChange={(value) => setBrand(value as Brand)}>
+              <Label htmlFor="brand">Laptop Brand *</Label>
+              <Select value={brand} onValueChange={(value) => setBrand(value as Brand)} disabled={submitting}>
                 <SelectTrigger id="brand">
                   <SelectValue />
                 </SelectTrigger>
@@ -77,19 +107,27 @@ export function AddIssuePage({ onNavigate, onAddIssue }: AddIssuePageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reportedBy">Reported By</Label>
+              <Label htmlFor="reportedBy">Reported By *</Label>
               <Input
                 id="reportedBy"
                 placeholder="Your name"
                 value={reportedBy}
                 onChange={(e) => setReportedBy(e.target.value)}
                 required
+                disabled={submitting}
               />
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit">Submit Issue</Button>
-              <Button type="button" variant="outline" onClick={() => onNavigate('home')}>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit Issue'}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onNavigate('home')}
+                disabled={submitting}
+              >
                 Cancel
               </Button>
             </div>

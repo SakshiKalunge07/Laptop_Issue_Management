@@ -11,7 +11,7 @@ import { UserPlus } from 'lucide-react';
 
 interface RegisterPageProps {
   onNavigate: (page: Page) => void;
-  onRegister: (user: { username: string; password: string; name: string; role: UserRole }) => void;
+  onRegister: (user: { username: string; password: string; name: string; role: UserRole }) => Promise<void>;
 }
 
 export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
@@ -21,8 +21,9 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('manager');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -41,8 +42,16 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
       return;
     }
 
-    onRegister({ username, password, name, role });
-    onNavigate('login');
+    setLoading(true);
+    try {
+      await onRegister({ username, password, name, role });
+      // Navigation handled by parent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,6 +81,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -84,24 +94,25 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
             <div className="space-y-3">
               <Label>Select Role</Label>
-              <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)}>
+              <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)} disabled={loading}>
                 <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-accent cursor-pointer">
                   <RadioGroupItem value="manager" id="manager" />
                   <Label htmlFor="manager" className="flex-1 cursor-pointer">
                     <div>Manager</div>
-                    <p className="text-muted-foreground">Can add issues, assign workers, and manage all tasks</p>
+                    <p className="text-muted-foreground text-xs">Can add issues, assign workers, and manage all tasks</p>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-accent cursor-pointer">
                   <RadioGroupItem value="worker" id="worker" />
                   <Label htmlFor="worker" className="flex-1 cursor-pointer">
                     <div>Worker</div>
-                    <p className="text-muted-foreground">Can view and resolve assigned issues</p>
+                    <p className="text-muted-foreground text-xs">Can view and resolve assigned issues</p>
                   </Label>
                 </div>
               </RadioGroup>
@@ -112,10 +123,11 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
               <Input
                 id="password"
                 type="password"
-                placeholder="Choose a password"
+                placeholder="Choose a password (min 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -128,11 +140,12 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Register
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Registering...' : 'Register'}
             </Button>
 
             <Button
@@ -140,6 +153,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
               variant="outline"
               className="w-full"
               onClick={() => onNavigate('login')}
+              disabled={loading}
             >
               Back to Login
             </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar, Page } from './components/Sidebar';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
@@ -8,25 +8,47 @@ import { IssueListPage } from './components/pages/IssueListPage';
 import { AssignWorkerPage } from './components/pages/AssignWorkerPage';
 import { WorkerPanelPage } from './components/pages/WorkerPanelPage';
 import { BrandIssuesPage } from './components/pages/BrandIssuesPage';
-import { mockIssues, mockWorkers, mockUsers } from './data/mockData';
-import { Issue, Brand, User, UserRole } from './types/issue';
+import { Issue, Brand, User, UserRole, Worker } from './types/issue';
+import { api } from './services/api';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
-  const [issues, setIssues] = useState<Issue[]>(mockIssues);
-  const [workers, setWorkers] = useState(mockWorkers);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Load data when user logs in
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [issuesData, workersData] = await Promise.all([
+        api.getIssues(),
+        api.getWorkers()
+      ]);
+      setIssues(issuesData);
+      setWorkers(workersData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      alert('Failed to load data. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNavigate = (page: Page, issueId?: string) => {
-    // Prevent navigation to protected pages if not logged in
     if (!currentUser && page !== 'login' && page !== 'register') {
       setCurrentPage('login');
       return;
     }
     
-    // Prevent workers from accessing manager-only pages
     if (currentUser?.role === 'worker' && page === 'add-issue') {
       return;
     }
@@ -37,80 +59,124 @@ export default function App() {
     }
   };
 
-  const handleLogin = (username: string, password: string): User | null => {
-    const user = users.find(
-      u => u.username === username && u.password === password
-    );
-    
-    if (user) {
+  const handleLogin = async (username: string, password: string): Promise<User | null> => {
+    try {
+      const user = await api.login(username, password);
       setCurrentUser(user);
       setCurrentPage('home');
       return user;
+    } catch (err) {
+      console.error('Login error:', err);
+      return null;
     }
-    
-    return null;
   };
 
-  const handleRegister = (newUser: { username: string; password: string; name: string; role: UserRole }) => {
-    // Check if username already exists
-    const existingUser = users.find(u => u.username === newUser.username);
-    if (existingUser) {
-      alert('Username already exists');
-      return;
+  const handleRegister = async (newUser: { 
+    username: string; 
+    password: string; 
+    name: string; 
+    role: UserRole 
+  }) => {
+    try {
+      await api.register(newUser);
+      alert('Registration successful! Please login.');
+      setCurrentPage('login');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      alert(errorMessage);
+      console.error('Registration error:', err);
     }
-
-    const user: User = {
-      id: String(users.length + 1),
-      ...newUser,
-    };
-    
-    setUsers([...users, user]);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setIssues([]);
+    setWorkers([]);
     setCurrentPage('login');
   };
 
-  const handleAddIssue = (newIssue: { title: string; description: string; brand: Brand; reportedBy: string }) => {
-    const issue: Issue = {
-      id: String(issues.length + 1),
-      ...newIssue,
-      status: 'Pending',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setIssues([...issues, issue]);
+  const handleAddIssue = async (newIssue: { 
+    title: string; 
+    description: string; 
+    brand: Brand; 
+    reportedBy: string 
+  }) => {
+    try {
+      const createdIssue = await api.createIssue({
+        title: newIssue.title,
+        description: newIssue.description,
+        brand: newIssue.brand,
+        reported_by: newIssue.reportedBy
+      });
+      
+      setIssues([...issues, createdIssue]);
+      alert('Issue created successfully!');
+      setCurrentPage('issue-list');
+    } catch (err) {
+      console.error('Error creating issue:', err);
+      throw err; // Let the page handle the error
+    }
   };
 
-  const handleAssignWorker = (issueId: string, workerId: string) => {
-    const worker = workers.find(w => w.id === workerId);
-    if (!worker) return;
+  const handleAssignWorker = async (issueId: string, workerId: string) => {
+    try {
+      const worker = workers.find(w => w.id === workerId);
+      if (!worker) return;
 
-    setIssues(issues.map(issue => 
-      issue.id === issueId 
-        ? { ...issue, assignedTo: worker.name }
-        : issue
-    ));
+      const result = await api.assignWorker(issueId, worker.name);
+      
+      setIssues(issues.map(issue => 
+        issue.id === issueId 
+          ? result.issue
+          : issue
+      ));
 
-    setWorkers(workers.map(w =>
-      w.id === workerId
-        ? { ...w, assignedIssues: w.assignedIssues + 1 }
-        : w
-    ));
+      setWorkers(workers.map(w =>
+        w.id === workerId
+          ? { ...w, assignedIssues: w.assignedIssues + 1 }
+          : w
+      ));
+      
+      alert('Worker assigned successfully!');
+      setCurrentPage('issue-list');
+    } catch (err) {
+      console.error('Error assigning worker:', err);
+      alert('Failed to assign worker. Please try again.');
+    }
   };
 
-  const handleMarkResolved = (issueId: string) => {
-    setIssues(issues.map(issue =>
-      issue.id === issueId
-        ? { ...issue, status: 'Resolved' as const }
-        : issue
-    ));
+  const handleMarkResolved = async (issueId: string) => {
+    try {
+      const issue = issues.find(i => i.id === issueId);
+      const assignedWorkerName = issue?.assignedTo;
+      
+      const result = await api.resolveIssue(issueId);
+      
+      setIssues(issues.map(issue =>
+        issue.id === issueId
+          ? result.issue
+          : issue
+      ));
+      
+      // Decrease the worker's assigned count in local state
+      if (assignedWorkerName) {
+        setWorkers(workers.map(worker =>
+          worker.name === assignedWorkerName && worker.assignedIssues > 0
+            ? { ...worker, assignedIssues: worker.assignedIssues - 1 }
+            : worker
+        ));
+      }
+      
+      alert('Issue marked as resolved!');
+    } catch (err) {
+      console.error('Error resolving issue:', err);
+      alert('Failed to mark issue as resolved. Please try again.');
+    }
   };
 
   const selectedIssue = selectedIssueId ? issues.find(i => i.id === selectedIssueId) || null : null;
 
   const renderPage = () => {
-    // Show login/register pages without authentication
     if (currentPage === 'login') {
       return <LoginPage onNavigate={handleNavigate} onLogin={handleLogin} />;
     }
@@ -119,16 +185,25 @@ export default function App() {
       return <RegisterPage onNavigate={handleNavigate} onRegister={handleRegister} />;
     }
 
-    // All other pages require authentication
     if (!currentUser) {
       return <LoginPage onNavigate={handleNavigate} onLogin={handleLogin} />;
+    }
+
+    if (loading && issues.length === 0) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-lg font-medium">Loading...</div>
+            <p className="text-muted-foreground mt-2">Please wait while we load your data</p>
+          </div>
+        </div>
+      );
     }
 
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={handleNavigate} issues={issues} userRole={currentUser.role} />;
       case 'add-issue':
-        // Only managers can access this page
         if (currentUser.role !== 'manager') {
           return <HomePage onNavigate={handleNavigate} issues={issues} userRole={currentUser.role} />;
         }
@@ -136,7 +211,6 @@ export default function App() {
       case 'issue-list':
         return <IssueListPage onNavigate={handleNavigate} issues={issues} userRole={currentUser.role} />;
       case 'assign-worker':
-        // Only managers can access this page
         if (currentUser.role !== 'manager') {
           return <IssueListPage onNavigate={handleNavigate} issues={issues} userRole={currentUser.role} />;
         }

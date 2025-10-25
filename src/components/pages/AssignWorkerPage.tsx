@@ -10,7 +10,7 @@ interface AssignWorkerPageProps {
   onNavigate: (page: Page) => void;
   selectedIssue: Issue | null;
   workers: Worker[];
-  onAssignWorker: (issueId: string, workerId: string) => void;
+  onAssignWorker: (issueId: string, workerId: string) => Promise<void>;
 }
 
 export function AssignWorkerPage({ 
@@ -20,11 +20,22 @@ export function AssignWorkerPage({
   onAssignWorker 
 }: AssignWorkerPageProps) {
   const [selectedWorker, setSelectedWorker] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
-  const handleAssign = () => {
-    if (selectedIssue && selectedWorker) {
-      onAssignWorker(selectedIssue.id, selectedWorker);
-      onNavigate('issue-list');
+  const handleAssign = async () => {
+    if (!selectedIssue || !selectedWorker) {
+      alert('Please select a worker');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      await onAssignWorker(selectedIssue.id, selectedWorker);
+      // Navigation handled by parent
+    } catch (err) {
+      console.error('Error assigning worker:', err);
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -74,6 +85,10 @@ export function AssignWorkerPage({
               <Label>Reported By</Label>
               <p>{selectedIssue.reportedBy}</p>
             </div>
+            <div>
+              <Label>Status</Label>
+              <p>{selectedIssue.status}</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -85,7 +100,7 @@ export function AssignWorkerPage({
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="worker">Available Workers</Label>
-              <Select value={selectedWorker} onValueChange={setSelectedWorker}>
+              <Select value={selectedWorker} onValueChange={setSelectedWorker} disabled={assigning}>
                 <SelectTrigger id="worker">
                   <SelectValue placeholder="Select a worker" />
                 </SelectTrigger>
@@ -100,10 +115,10 @@ export function AssignWorkerPage({
             </div>
 
             <div className="flex gap-4">
-              <Button onClick={handleAssign} disabled={!selectedWorker}>
-                Assign Worker
+              <Button onClick={handleAssign} disabled={!selectedWorker || assigning}>
+                {assigning ? 'Assigning...' : 'Assign Worker'}
               </Button>
-              <Button variant="outline" onClick={() => onNavigate('issue-list')}>
+              <Button variant="outline" onClick={() => onNavigate('issue-list')} disabled={assigning}>
                 Cancel
               </Button>
             </div>

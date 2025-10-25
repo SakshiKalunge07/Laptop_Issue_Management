@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -8,11 +9,24 @@ import { CheckCircle2 } from 'lucide-react';
 interface WorkerPanelPageProps {
   onNavigate: (page: Page) => void;
   issues: Issue[];
-  onMarkResolved: (issueId: string) => void;
+  onMarkResolved: (issueId: string) => Promise<void>;
 }
 
 export function WorkerPanelPage({ onNavigate, issues, onMarkResolved }: WorkerPanelPageProps) {
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+
   const assignedIssues = issues.filter(issue => issue.assignedTo);
+
+  const handleResolve = async (issueId: string) => {
+    setResolvingId(issueId);
+    try {
+      await onMarkResolved(issueId);
+    } catch (err) {
+      console.error('Error resolving issue:', err);
+    } finally {
+      setResolvingId(null);
+    }
+  };
 
   return (
     <div className="flex-1 p-8">
@@ -62,11 +76,12 @@ export function WorkerPanelPage({ onNavigate, issues, onMarkResolved }: WorkerPa
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onMarkResolved(issue.id)}
+                        onClick={() => handleResolve(issue.id)}
+                        disabled={resolvingId === issue.id}
                         className="text-green-600 border-green-600 hover:bg-green-50"
                       >
                         <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Mark Resolved
+                        {resolvingId === issue.id ? 'Resolving...' : 'Mark Resolved'}
                       </Button>
                     ) : (
                       <Badge variant="default" className="bg-green-600">
